@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Simple E-Wallet & Payment Gateway</title>
+    <link rel="stylesheet" href="my.css">
+</head>
+
+<body>
+    <h1>E-Wallet & Payment Gateway Demo</h1>
+    <div id="menu">
+        <h2>Wallet Balance: $<span id="balance">0.00</span></h2><a href="#add_money" id="add_money_btn">ADD MONEY</a><a href="#pay_using_wallet" id="pay_money">PAY USING WALLET</a><a href="#external_payment" id="external_payment">EXTERNAL PAYMENT</a></div>
+    <script>
+        const Add_money = document.getElementById('add_money_btn');
+        const Pay_money = document.getElementById('pay_money');
+        const External_payment = document.getElementById('external_payment');
+        document.getElementById('add_money_btn').addEventListener('click', (event) => {
+                document.getElementById('add_money').style.display = "block";
+                document.getElementById('pay_using_wallet').style.display = "none";
+                document.getElementById('pay_using_external_payment').style.display = "none";
+            }
+
+        );
+        document.getElementById('pay_money').addEventListener('click', (event) => {
+                document.getElementById('pay_using_wallet').style.display = "block";
+                document.getElementById('add_money').style.display = "none";
+                document.getElementById('pay_using_external_payment').style.display = "none";
+            }
+
+        );
+        document.getElementById('external_payment').addEventListener('click', (event) => {
+                document.getElementById('pay_using_external_payment').style.display = "block";
+                document.getElementById('add_money').style.display = "none";
+                document.getElementById('pay_using_wallet').style.display = "none";
+            }
+
+        )
+    </script>
+    <div id="add_money" style="display: none;">
+        <h3>Add Money to Wallet</h3>
+        <input type="number" id="addAmount" placeholder="Amount to add" min="0.01" step="0.01" />
+        <button onclick="addMoney()">Add Money</button>
+        <h4>Add money from other sources</h4>
+        <button id="mpesa1">through Mpesa</button>
+        <button id="bank_account">through bank account</button>
+        <button id="external_sources">through other external sources</button>
+    </div>
+    <div id="mpesa_payment" style="display:none">
+        <legend>Enter your Mpesa Number</legend>
+        <input type="text" placeholder="mpesa number">
+        <button id="ok_btn">ok</button>
+    </div>
+    <script>
+        document.getElementById('mpesa1').addEventListener('click', (event) => {
+                alert('you will be asked to enter Mpesa number');
+                document.getElementById('mpesa_payment').style.display = "block";
+                document.getElementById('add_money').style.display = "none";
+            }
+
+        )
+    </script>
+    <div id="pay_using_wallet" style="display:none">
+        <h3>Pay Using Wallet</h3><input type="number" id="payAmount" placeholder="Amount to pay" min="0.01" step="0.01" /><input type="text" id="payDesc" placeholder="Description (optional)" /><button onclick="payWallet()">Pay with Wallet</button></div>
+    <div id="pay_using_external_payment" style="display:none">
+        <h3>Pay Using External Payment</h3><input type="number" id="extAmount" placeholder="Amount to pay" min="0.01" step="0.01" /><input type="text" id="extDesc" placeholder="Description (optional)" /><button onclick="payExternal()">Pay Externally</button>
+        <h4>pay money with other sources</h4><button id="mpesa2">through Mpesa</button><button id="bank_account">through bank account</button></div>
+    <script>
+        document.getElementById('mpesa2').addEventListener('click', (event) => {
+                alert('you will be asked to enter Mpesa number');
+            }
+
+        )
+    </script>
+    <div class="transactions">
+        <h3>Transaction History</h3>
+        <div id="transactionsList"></div>
+    </div>
+    <script>
+        const API_URL = 'http://localhost:4000';
+        async function fetchWallet() {
+            const res = await fetch(`$ {
+                API_URL
+            }
+            /wallet`);
+            const data = await res.json();
+            document.getElementById('balance').textContent = data.balance.toFixed(2);
+            renderTransactions(data.transactions);
+        }
+
+        function renderTransactions(transactions) {
+            const container = document.getElementById('transactionsList');
+            container.innerHTML = '';
+            if (!transactions.length) {
+                container.textContent = 'No transactions yet.';
+                return;
+            }
+            transactions.slice().reverse().forEach(tx => {
+                const div = document.createElement('div');
+                div.className = 'transaction ' + tx.type;
+                div.textContent = `[$ {
+                    new Date(tx.date).toLocaleString()
+                }
+                ] $ {
+                    tx.description
+                }
+                - $ {
+                    tx.type==='debit' ? '-': '+'
+                }
+                $$ {
+                    tx.amount.toFixed(2)
+                }
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function addMoney() {
+            const amount = parseFloat(document.getElementById('addAmount').value);
+            if (isNaN(amount) || amount <= 0) {
+                alert('Enter a valid amount');
+                return;
+            }
+            const res = await fetch(`$ {
+                API_URL
+            }
+            /wallet/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount
+                })
+            });
+            const data = await res.json();
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert('Money added successfully!');
+                fetchWallet();
+                document.getElementById('addAmount').value = '';
+            }
+        }
+
+        async function payWallet() {
+            const amount = parseFloat(document.getElementById('payAmount').value);
+            const description = document.getElementById('payDesc').value || 'Payment';
+            if (isNaN(amount) || amount <= 0) {
+                alert('Enter a valid amount');
+                return;
+            }
+            const res = await fetch(`$ {
+                API_URL
+            }
+            /pay/wallet`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount,
+                    description
+                })
+            });
+            const data = await res.json();
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert(data.message);
+                fetchWallet();
+                document.getElementById('payAmount').value = '';
+                document.getElementById('payDesc').value = '';
+            }
+        }
+
+        async function payExternal() {
+            const amount = parseFloat(document.getElementById('extAmount').value);
+            const description = document.getElementById('extDesc').value || 'External Payment';
+            if (isNaN(amount) || amount <= 0) {
+                alert('Enter a valid amount');
+                return;
+            }
+            const res = await fetch(`$ {
+                API_URL
+            }
+            /pay/external`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount,
+                    description
+                })
+            });
+            const data = await res.json();
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert(data.message);
+                fetchWallet();
+                document.getElementById('extAmount').value = '';
+                document.getElementById('extDesc').value = '';
+            }
+        }
+
+        // Initial load
+        fetchWallet();
+    </script>
+    <script src="/public/server.js"></script>
+</body>
+
+</html>
+
+</html>
